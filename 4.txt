@@ -1,0 +1,225 @@
+INSERT
+
+use company
+
+depts = [
+    {
+      _id: "dept1", 
+      name: "Finance", 
+      place: "Bengaluru"
+    }, 
+    {
+      _id: "dept2", 
+      name: "HR",
+      place: "Mangaluru"
+    }, 
+    {
+      _id: "dept3", 
+      name: "Developement",
+      place: "Mysore"
+    }
+  ]
+db.createCollection("dept")
+db.dept.insertMany(depts)
+
+projects = [
+    {
+      _id:"p1", 
+      title: "Web Application", 
+      deptId: "dept1"
+    }, 
+    {
+      _id:"p2", 
+      title:"Attendence book", 
+      deptId: "dept2"
+    }, 
+    {
+      _id:"p3", 
+      title:"Social media", 
+      deptId:"dept3"
+    },
+    {
+      _id:"p4", 
+      title:"Chatting app", 
+      deptId:"dept2"
+    }
+  ]
+db.createCollection("project")
+db.project.insertMany(projects)
+
+employees = [
+      {
+        ssn: "s001", 
+        ename: "Manu",
+        gender: "male",
+        salary: 2000,
+        qualification: "BE",
+        exp: 5,
+        designation: "Senior SE",
+        deptId: "dept1", 
+        projects: [
+          {
+            projectId: "p1", 
+            nHours: 20
+          }
+        ]
+      }, 
+      {
+        ssn:"s006", 
+        ename: "Bhuvi",
+        gender: "female",
+        salary: 5000, 
+        qualification: "MCA",
+        exp:7, 
+        designation: "SE",
+        deptId:"dept2", 
+        projects:[
+          {
+            projectId: "p1",
+            nHours: 10
+          }, 
+          {
+            projectId:"p2",
+            nHours: 22
+          }
+        ]
+      }, 
+      {
+        ssn: "s004", 
+        ename: "Suresh",
+        gender: "male",
+        salary: 4000, 
+        qualification: "BCA",
+        exp: 4, 
+        designation: "Developer",
+        deptId:"dept3", 
+        projects:[
+          {
+            projectId: "p2",
+            nHours: 12
+          }, 
+          {
+            projectId: "p3",
+            nHours: 21
+          },
+          {
+            projectId: "p1",
+            nHours: 33
+          }
+        ]
+      }, 
+      {
+        ssn: "s002", 
+        ename: "Sam",
+        gender: "male", 
+        salary: 8000, 
+        qualification: "MCA",
+        exp: 2, 
+        designation: "Senior SE",
+        deptId:"dept1", 
+        projects:[
+          {
+            projectId: "p4",
+            nHours: 26
+          }
+        ]
+      }, 
+      {
+        ssn: "s005", 
+        ename: "Lilly",
+        gender: "female",
+        salary: 7000, 
+        qualification: "BE",
+        exp: 9, 
+        designation: "HR",
+        deptId:"dept2", 
+        projects:[
+          {
+            projectId: "p2",
+            nHours: 31
+          },
+          {
+            projectId: "p4",
+            nHours: 27
+          }
+        ]
+      },
+      {
+        ssn: "s003", 
+        ename: "Arya",
+        gender: "female",
+        salary: 9000, 
+        qualification: "MCA",
+        exp: 9, 
+        designation: "Developer",
+        deptId:"dept1", 
+        projects:[
+          {
+            projectId: "p4",
+            nHours: 22
+          }
+        ]
+      }
+    ]
+db.createCollection("employee")
+db.employee.insertMany(employees)
+
+
+
+NO.2
+
+db.employee.find().sort(
+	{ssn:1}
+).pretty()
+
+NO.3
+
+db.employee.find(
+	{deptId: db.dept.find(
+			{name: "Finance"}
+		).toArray()[0]._id
+	}
+).pretty()
+
+
+NO.4
+
+db.employee.find({
+	salary: db.employee.aggregate([
+		{$group:{
+			_id:null,
+			maxsal:{$max:'$salary'}
+		}}
+	]).toArray()[0].maxsal
+})
+
+
+NO.5
+
+// sort employees according to size (number) of projects  
+db.employee.aggregate([
+	{ $project: { count: { $size: '$projects' } } },
+	{ $sort: {count: -1} }
+])
+
+// store the employee in variable
+emp = db.employee.aggregate([
+	{ $project: { count: { $size: '$projects' } } },
+	{ $sort: {count: -1} }
+]).toArray()[0]
+
+db.employee.updateOne({_id: emp._id}, {$set: {award: "employee of year"}})
+
+NO.6
+
+minExp = db.employee.aggregate([
+	{$group:{_id:null,minExp:{$min:'$exp'}}}
+]).toArray()[0].minExp
+db.employee.deleteOne({exp:minExp})
+
+// full query
+db.employee.deleteOne({
+	exp: db.employee.aggregate([
+		{$group:{_id:null,minExp:{$min:'$exp'}}}
+	]).toArray()[0].minExp
+})

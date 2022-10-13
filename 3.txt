@@ -1,0 +1,229 @@
+CREATE
+
+CREATE TABLE vendor(
+	tin_no INTEGER PRIMARY KEY,
+	name VARCHAR(50) NOT NULL,
+	address VARCHAR(100) NOT NULL,
+	contact VARCHAR(10) NOT NULL
+);
+
+CREATE TABLE panel(
+	pv_id INTEGER PRIMARY KEY,
+	panel_type VARCHAR(50) NOT NULL,
+	warrenty INTEGER NOT NULL,
+	price INTEGER NOT NULL,
+	capacity INT
+);
+
+CREATE TABLE user(
+	house_no INTEGER PRIMARY KEY,
+	address VARCHAR(100) NOT NULL,
+	user_usage VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE install(
+	tin_no INTEGER REFERENCES vendor,
+	pv_id INTEGER REFERENCES panel,
+	house_no INTEGER REFERENCES user,
+	install_date DATE NOT NULL,
+	PRIMARY KEY(tin_no, pv_id, house_no)
+);
+
+CREATE TABLE sell(
+	tin_no INTEGER REFERENCES vendor,
+	pv_id INTEGER REFERENCES panel,
+	PRIMARY KEY(tin_no, pv_id)
+);
+
+CREATE TABLE purchase(
+	pv_id INTEGER REFERENCES panel,
+	house_no INTEGER REFERENCES user,
+	PRIMARY KEY(pv_id, house_no)
+);
+
+
+
+NO.1
+
+SELECT
+	COUNT(v.tin_no), v.name
+FROM
+	vendor as v,
+	install as i,
+	user as u
+WHERE 
+	i.tin_no = v.tin_no AND
+	u.house_no = i.house_no AND
+	u.user_usage = "Domestic"
+GROUP BY
+	v.tin_no
+HAVING 
+	COUNT(v.tin_no) >= ALL (
+		SELECT COUNT(v.tin_no)
+		FROM 
+			vendor as v,
+			install as i,
+			user as u
+		WHERE 
+			i.tin_no = v.tin_no AND
+			u.house_no = i.house_no AND
+			u.user_usage = "Domestic"
+		GROUP BY
+			v.tin_no
+	);
+
+
+
+NO.2
+
+SELECT
+	u.address,
+	COUNT(u.house_no) as "Number of houses"
+FROM 
+	install as i,
+	user as u
+WHERE
+	i.house_no = u.house_no
+GROUP BY
+	u.house_no
+HAVING
+	COUNT(u.house_no) <= ALL (
+		SELECT
+			COUNT(u.house_no)
+		FROM 
+			install as i,
+			user as u
+		WHERE
+			i.house_no = u.house_no
+		GROUP BY
+			u.house_no
+	);
+
+
+NO.3
+
+SELECT
+	u.address, p.panel_type
+FROM 
+	panel as p,
+	install as i,
+	user as u
+WHERE
+	i.pv_id = p.pv_id AND
+	i.house_no = u.house_no AND
+	p.panel_type = "Monocrystalline"
+GROUP BY
+	u.address;
+
+NO.4
+
+SELECT
+	u.address,
+	u.house_no
+FROM
+	user as u
+WHERE
+	u.house_no IN
+		(
+		SELECT
+			u.house_no
+		FROM 
+			install as i,
+			panel as p,
+			user as u
+		WHERE
+			i.pv_id = p.pv_id AND
+			i.house_no = u.house_no AND
+			p.panel_type = "Monocrystalline"	
+		) AND
+	u.house_no IN
+		(
+		SELECT
+			u.house_no
+		FROM 
+			install as i,
+			panel as p,
+			user as u
+		WHERE
+			i.pv_id = p.pv_id AND
+			i.house_no = u.house_no AND
+			p.panel_type = "Polycrystalline"
+		);
+
+
+
+SELECT
+	u.address,
+	COUNT(u.house_no) as "number of installations in address",
+	COUNT(u.house_no) * (40000+60000) as "Installation charges"
+FROM
+	user as u
+WHERE
+	u.house_no IN
+		(
+		SELECT
+			u.house_no
+		FROM 
+			install as i,
+			panel as p,
+			user as u
+		WHERE
+			i.pv_id = p.pv_id AND
+			i.house_no = u.house_no AND
+			p.panel_type = "Monocrystalline"	
+		) AND
+	u.house_no IN
+		(
+		SELECT
+			u.house_no
+		FROM 
+			install as i,
+			panel as p,
+			user as u
+		WHERE
+			i.pv_id = p.pv_id AND
+			i.house_no = u.house_no AND
+			p.panel_type = "Polycrystalline"
+		)
+GROUP BY
+	u.address;
+
+
+NO.5
+
+SELECT
+	v.*
+FROM
+	install as i,
+	vendor as v
+WHERE
+	i.tin_no = v.tin_no AND
+	i.install_date IN (
+		SELECT
+			MIN(i.install_date)
+		FROM
+			install as i,
+			vendor as v
+		WHERE
+			i.tin_no = v.tin_no
+		);
+
+
+NO.6
+
+SELECT
+	COUNT(s.pv_id) as "total sales",
+	COUNT(s.pv_id) / (SELECT COUNT(*) FROM sell) as "AVG sales",
+	p.panel_type
+FROM
+	user as u,
+	sell as s,
+	panel as p,
+	install as i
+WHERE
+	i.pv_id = p.pv_id AND
+	i.house_no = u.house_no AND
+	s.pv_id = p.pv_id AND
+	u.user_usage = "Commercial"
+GROUP BY
+	p.panel_type;

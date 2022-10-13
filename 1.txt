@@ -1,0 +1,161 @@
+No.1
+
+CREATE
+
+CREATE TABLE musician (
+	musician_ssn VARCHAR(10) PRIMARY KEY,
+	musician_name VARCHAR(100) NOT NULL,
+	musician_address VARCHAR(255) NOt NULL,
+	musician_phone_no BIGINT NOT NULL
+);
+
+CREATE TABLE instrument (
+	instrument_id INTEGER PRIMARY KEY,
+	instrument_name VARCHAR(100) NOT NULL,
+	instrument_musical_key VARCHAR(10) NOT NULL
+);
+
+CREATE TABLE musician_instrument(
+	musician_ssn VARCHAR(10) REFERENCES musician,
+	instrument_id INTEGER REFERENCES instrument,
+	PRIMARY KEY(musician_ssn, instrument_id)
+);
+
+CREATE TABLE album (
+	album_id INTEGER PRIMARY KEY,
+	producer_ssn VARCHAR(10) REFERENCES musician,
+	album_title VARCHAR(100) NOT NULL,
+	copyright_data VARCHAR(100) NOT NULL,
+	format VARCHAR(10) NOT NULL	
+);
+
+CREATE TABLE song (
+	song_id INTEGER PRIMARY KEY,
+	album_id INTEGER REFERENCES album,
+	song_title VARCHAR(255) NOT NULL,
+	song_author VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE musician_song (
+	musician_ssn VARCHAR(10) REFERENCES musician,
+	song_id INTEGER REFERENCES song,
+	PRIMARY KEY(musician_ssn, song_id)
+);
+
+
+
+QUERY
+
+NO.1
+
+SELECT
+	m.musician_name as "Musician",
+	s.song_title as "Song",
+	a.album_title as "Album"
+FROM 
+	musician_song as ms,
+	musician as m,
+	song as s,
+	album as a
+WHERE
+	ms.musician_ssn = m.musician_ssn AND
+	ms.song_id = s.song_id AND
+	a.album_id = s.album_id;
+
+
+NO.2
+
+SELECT
+	m.musician_name as "Musicians who has not produced any albums"
+FROM 
+	musician as m
+WHERE m.musician_ssn NOT IN (
+	SELECT m.musician_ssn
+	FROM
+		musician as m,
+		album as a
+	WHERE
+		m.musician_ssn = a.producer_ssn
+	);
+
+
+NO.3
+
+SELECT 
+	COUNT(ms.musician_ssn) as "Total Musicians for song",
+	s.*
+FROM 
+	musician_song as ms,
+	song as s
+WHERE
+	s.song_id = ms.song_id
+GROUP BY
+	ms.song_id
+HAVING 
+	COUNT(ms.musician_ssn) > 3;
+
+
+NO.4
+
+SELECT
+	i.instrument_name,
+	COUNT(mi.musician_ssn) as "Total musicians playing the instrument",
+	(SELECT COUNT(musician_ssn) FROM musician) as "Total musicians",
+	COUNT(i.instrument_id) / (SELECT COUNT(musician_ssn) FROM musician)
+		as "Average number of musicians who play instrument"
+FROM 
+	instrument as i,
+	musician_instrument as mi
+WHERE
+	i.instrument_id = mi.instrument_id
+GROUP BY
+	mi.instrument_id;
+
+
+NO.5
+
+SELECT DISTINCT( m.musician_name )
+FROM 
+	musician as m,
+	instrument as i,
+	musician_instrument as p,
+	album as a
+WHERE 
+	m.musician_ssn = p.musician_ssn AND
+	i.instrument_id = p.instrument_id AND
+	i.instrument_name = 'Flute' AND
+	EXISTS (
+		SELECT m.musician_name
+		FROM musician as m, instrument as i, musician_instrument as p
+		WHERE
+			m.musician_ssn = p.musician_ssn AND
+			i.instrument_id = p.instrument_id AND
+			i.instrument_name = 'Guitar' AND
+			a.producer_ssn IN (
+				SELECT producer_ssn 
+				FROM album
+				WHERE no_of_songs >= (
+					SELECT AVG(no_of_songs)
+					FROM album
+					
+				)
+			)
+	)
+
+
+NO.6
+
+SELECT
+	m.*,
+	COUNT(mi.instrument_id) as "Number of instruments played by musician"
+FROM
+	musician as m,
+	instrument as i,
+	musician_instrument as mi
+WHERE
+	m.musician_ssn = mi.musician_ssn AND
+	i.instrument_id = mi.instrument_id
+GROUP BY
+	mi.musician_ssn
+HAVING
+	COUNT(mi.musician_ssn) = (SELECT COUNT(*) FROM instrument);

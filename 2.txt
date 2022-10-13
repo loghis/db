@@ -1,0 +1,162 @@
+CREATE
+
+CREATE TABLE doctor(
+	ssn VARCHAR(10) PRIMARY KEY,
+	name VARCHAR(50) NOT NULL,
+	specialization VARCHAR(50) NOT NULL,
+	year_of_exp INTEGER NOT NULL
+);
+
+CREATE TABLE patient(
+	ssn VARCHAR(10) PRIMARY KEY,
+	name VARCHAR(50) NOT NULL,
+	address VARCHAR(50) NOT NULL,
+	age INTEGER NOT NULL
+);
+
+CREATE TABLE doctor_patient_check(
+	doctor_ssn VARCHAR(10) REFERENCES doctor,
+	patient_ssn VARCHAR(10) REFERENCES patient,
+	PRIMARY KEY(doctor_ssn, patient_ssn)
+);
+
+CREATE TABLE drug(
+	trade_name VARCHAR(50) PRIMARY KEY,
+	formula VARCHAR(50) NOT NULL,
+	phar_comp_name VARCHAR(50) REFERENCES phar_company
+);
+
+CREATE TABLE doctor_drug_prescribe(
+	drug_trade_name VARCHAR(50) REFERENCES drug,
+	doctor_ssn VARCHAR(10) REFERENCES doctor,
+	patient_ssn VARCHAR(10) REFERENCES patient,
+	prescription_date DATE NOT NULL,
+	quantity INTEGER NOT NULL,
+	PRIMARY KEY(drug_trade_name, doctor_ssn, patient_ssn)
+);
+
+CREATE TABLE pharmacy(
+	name VARCHAR(50) PRIMARY KEY,
+	adddress VARCHAR(50) NOT NULL,
+	phone_number BIGINT NOT NULL
+);
+
+CREATE TABLE drug_pharmacy_sell(
+	drug_trade_name VARCHAR(50) REFERENCES drug,
+	pharmacy_name VARCHAR(50) REFERENCES pharmacy,
+	PRIMARY KEY(drug_trade_name, pharmacy_name)
+);
+
+CREATE TABLE phar_company(
+	name VARCHAR(50) PRIMARY KEY,
+	address VARCHAR(50) NOT NULL,
+	phone_number BIGINT NOT NULL
+);
+
+CREATE TABLE phar_comp_pharmacy_contract(
+	phar_comp_name VARCHAR(50) REFERENCES phar_company,
+	pharmacy_name VARCHAR(50) REFERENCES pharmacy,
+	start_date DATE NOT NULL,
+	end_date DATE NOT NULL,
+	supervisor VARCHAR(50) NOT NULL,
+	text VARCHAR(100) NOT NULL,
+	PRIMARY KEY(pharmacy_name, phar_comp_name)
+);
+
+
+
+
+QUERY 
+NO.1
+
+SELECT 
+	p.*
+FROM
+	patient as p,
+	doctor as d,
+	doctor_patient_check as dp
+WHERE
+	p.ssn = dp.patient_ssn AND
+	d.ssn = dp.doctor_ssn AND
+	p.age = 20 AND
+	d.specialization = "Eye-specialist";
+
+
+
+NO.2
+SELECT
+	d.*
+FROM
+	doctor as d,
+	doctor_drug_prescribe as pres,
+	patient as p
+WHERE
+	d.ssn = pres.doctor_ssn AND
+	p.ssn = pres.patient_ssn AND
+	pres.prescription_date LIKE "2013-%"
+GROUP BY 
+	pres.doctor_ssn
+HAVING
+	COUNT(pres.patient_ssn) >= 5
+
+
+NO.3
+
+SELECT
+	*
+FROM
+	doctor as d
+WHERE
+	d.year_of_exp = (
+		SELECT MAX(year_of_exp)
+		FROM doctor
+	)
+
+NO.4
+
+SELECT
+	contract.phar_comp_name,
+	company.address,
+	company.phone_number,
+	COUNT(contract.pharmacy_name)
+FROM
+	phar_company as company,
+	phar_comp_pharmacy_contract as contract,
+	pharmacy as p
+WHERE
+	company.name = contract.phar_comp_name AND
+	p.name = contract.pharmacy_name
+GROUP BY
+	contract.phar_comp_name
+HAVING
+	COUNT(contract.pharmacy_name) >= 5;
+
+NO.5
+
+SELECT *
+FROM drug
+WHERE formula IN (
+	SELECT formula
+	FROM drug
+	GROUP BY formula
+	HAVING COUNT(formula) = 1
+)
+
+
+NO.6
+
+SELECT d.*
+FROM 
+	drug as d,
+	pharmacy as p,
+	drug_pharmacy_sell as sell
+WHERE
+	d.trade_name = sell.drug_trade_name AND
+	p.name = sell.pharmacy_name
+GROUP BY
+	sell.drug_trade_name
+HAVING
+	COUNT(sell.pharmacy_name) = (
+		SELECT COUNT(*) 
+		FROM pharmacy
+	);
